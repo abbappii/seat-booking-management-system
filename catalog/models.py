@@ -1,4 +1,7 @@
 from django.db import models
+from django.contrib.auth.models import User
+
+from .choices import BookingChoices
 
 
 class Venue(models.Model):
@@ -65,20 +68,12 @@ class Seat(models.Model):
         return f"{self.seat_number} ({self.seat_type.name}) at {self.venue.name}"
 
 
-from django.contrib.auth.models import User
 
 
 class Booking(models.Model):
-    STATUS_CHOICES = [
-        ("PENDING", "Pending"),
-        ("CONFIRMED", "Confirmed"),
-        ("CANCELLED", "Cancelled"),
-        ("COMPLETED", "Completed"),
-    ]
-
     user = models.ForeignKey(User, related_name="bookings", on_delete=models.CASCADE)
     seat = models.OneToOneField(Seat, related_name="booking", on_delete=models.CASCADE)
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="PENDING")
+    status = models.CharField(max_length=10, choices=BookingChoices.choices, default="PENDING")
     booking_time = models.DateTimeField(auto_now_add=True)
     payment_status = models.BooleanField(default=False)
     payment_amount = models.DecimalField(
