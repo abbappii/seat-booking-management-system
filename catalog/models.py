@@ -1,3 +1,4 @@
+from typing import Iterable
 from django.db import models
 from django.contrib.auth.models import User
 
@@ -41,6 +42,9 @@ class Event(models.Model):
 class SeatType(models.Model):
     name = models.CharField(max_length=50, unique=True)
     description = models.TextField(null=True, blank=True)
+    base_price = models.DecimalField(
+        max_digits=10, decimal_places=2, default=100.0
+    )
     price_multiplier = models.DecimalField(max_digits=5, decimal_places=2, default=1.0)
 
     def __str__(self):
@@ -64,10 +68,15 @@ class Seat(models.Model):
     class Meta:
         unique_together = ("venue", "event", "seat_number")
 
+
+    def save(self, *args, **kwargs):
+        fixed_base_price = self.seat_type.base_price
+        self.price = fixed_base_price * self.seat_type.price_multiplier
+        super().save(*args, **kwargs)
+
+
     def __str__(self):
         return f"{self.seat_number} ({self.seat_type.name}) at {self.venue.name}"
-
-
 
 
 class Booking(models.Model):
