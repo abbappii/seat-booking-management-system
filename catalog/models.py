@@ -1,4 +1,8 @@
+from typing import Iterable
 from django.db import models
+from django.contrib.auth.models import User
+
+from .choices import BookingChoices
 
 
 class Venue(models.Model):
@@ -38,6 +42,9 @@ class Event(models.Model):
 class SeatType(models.Model):
     name = models.CharField(max_length=50, unique=True)
     description = models.TextField(null=True, blank=True)
+    base_price = models.DecimalField(
+        max_digits=10, decimal_places=2, default=100.0
+    )
     price_multiplier = models.DecimalField(max_digits=5, decimal_places=2, default=1.0)
 
     def __str__(self):
@@ -61,24 +68,21 @@ class Seat(models.Model):
     class Meta:
         unique_together = ("venue", "event", "seat_number")
 
+
+    def save(self, *args, **kwargs):
+        fixed_base_price = self.seat_type.base_price
+        self.price = fixed_base_price * self.seat_type.price_multiplier
+        super().save(*args, **kwargs)
+
+
     def __str__(self):
         return f"{self.seat_number} ({self.seat_type.name}) at {self.venue.name}"
 
 
-from django.contrib.auth.models import User
-
-
 class Booking(models.Model):
-    STATUS_CHOICES = [
-        ("PENDING", "Pending"),
-        ("CONFIRMED", "Confirmed"),
-        ("CANCELLED", "Cancelled"),
-        ("COMPLETED", "Completed"),
-    ]
-
     user = models.ForeignKey(User, related_name="bookings", on_delete=models.CASCADE)
     seat = models.OneToOneField(Seat, related_name="booking", on_delete=models.CASCADE)
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="PENDING")
+    status = models.CharField(max_length=10, choices=BookingChoices.choices, default="PENDING")
     booking_time = models.DateTimeField(auto_now_add=True)
     payment_status = models.BooleanField(default=False)
     payment_amount = models.DecimalField(
