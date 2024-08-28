@@ -1,3 +1,5 @@
+from django.db import transaction
+
 from rest_framework import serializers
 from ...models import Booking, Seat
 
@@ -41,10 +43,13 @@ class BookingSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         user = self.context["request"].user
         seat = validated_data["seat"]
-        if not seat.is_available:
-            raise serializers.ValidationError("This seat is already booked.")
-        seat.is_available = False
-        seat.save()
+
+        with transaction.atomic():
+            seat = Seat.objects.select_for_update().get(pk=seat.pk)
+            if not seat.is_available:
+                raise serializers.ValidationError("This seat is already booked.")
+            seat.is_available = False
+            seat.save()
 
         validated_data["user"] = user
 
